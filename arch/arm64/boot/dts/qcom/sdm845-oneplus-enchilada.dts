@@ -10,6 +10,18 @@
 / {
 	model = "OnePlus 6";
 	compatible = "oneplus,enchilada", "qcom,sdm845";
+
+	battery: battery {
+		compatible = "simple-battery";
+
+		charge-full-design-microamp-hours = <3300000>;
+		voltage-min-design-microvolt = <3700000>;
+		voltage-max-design-microvolt = <4400000>;
+	};
+};
+
+&pmi8998_fg {
+	monitored-battery = <&battery>;
 };
 
 &display_panel {
