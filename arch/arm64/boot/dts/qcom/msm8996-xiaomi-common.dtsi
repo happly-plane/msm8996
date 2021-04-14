@@ -179,6 +179,10 @@
 	status = "okay";
 };
 
+&apc_cpr3 {
+	vdd-supply = <&vreg_apc_0p8>;
+};
+
 &blsp2_i2c2 {
 	status = "okay";
 	label = "NFC_I2C";
@@ -254,7 +258,7 @@
 };
 
 &gpu {
-	status = "okay";
+	//status = "okay";
 };
 
 &mdss {
@@ -636,7 +640,6 @@
 		regulator-name = "vreg_apc_0p8";
 		regulator-min-microvolt = <470000>;
 		regulator-max-microvolt = <1140000>;
-		regulator-max-step-microvolt = <150000>;
 		regulator-always-on;
 	};
 };

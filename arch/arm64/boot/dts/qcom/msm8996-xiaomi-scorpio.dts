@@ -40,7 +40,7 @@
 
 			display = <&panel>;
 
-			/* DSI0 clocks */
+			/* DSI0 clocks
 			clocks = <&mmcc MDSS_MDP_CLK>,
 				 <&mmcc MMSS_MMAGIC_AHB_CLK>,
 				 <&mmcc MDSS_AHB_CLK>,
@@ -51,7 +51,7 @@
 				 <&mmcc MDSS_ESC0_CLK>;
 
 			/* MDSS power domain */
-			power-domains = <&mmcc MDSS_GDSC>;
+			//power-domains = <&mmcc MDSS_GDSC>;
 		};
 	};
 
@@ -165,6 +165,7 @@
 };
 
 &mdp_smmu {
+	status = "disabled";
 	/*
 	 * These are required to avoid crashing
 	 */
@@ -177,6 +178,10 @@
 	 * always-on so it does not need any consumers to stay on.
 	 */
 	/delete-property/ power-domains;
+};
+
+&mmcc {
+	status = "disabled";
 };
 
 &mss_pil {

@@ -6,6 +6,9 @@
  *                     <angelogioacchino.delregno@somainline.org>
  */
 
+#define DEBUG
+#define VERBOSE_DEBUG
+
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/debugfs.h>
@@ -20,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_opp.h>
+#include <linux/pm_runtime.h>
 #include <linux/interrupt.h>
 #include <linux/regmap.h>
 #include <linux/mfd/syscon.h>
@@ -302,7 +306,6 @@ struct cpr_thread {
 	struct cpr_ext_data	ext_data;
 	struct generic_pm_domain pd;
 	struct device		*attached_cpu_dev;
-	struct work_struct	restart_work;
 	bool			restarting;
 
 	const struct cpr_fuse	*cpr_fuses;
@@ -329,6 +332,7 @@ struct cpr_drv {
 	int			extra_corners;
 	unsigned int		vreg_step;
 	bool			enabled;
+	struct work_struct	restart_work;
 
 	struct cpr_thread	*threads;
 	struct genpd_onecell_data cell_data;
@@ -477,45 +481,49 @@ static bool cpr_check_any_thread_busy(struct cpr_thread *thread)
 
 static void cpr_restart_worker(struct work_struct *work)
 {
-	struct cpr_thread *thread = container_of(work, struct cpr_thread,
+	struct cpr_drv *drv = container_of(work, struct cpr_drv,
 						 restart_work);
-	struct cpr_drv *drv = thread->drv;
-	int i;
+	struct cpr_thread *thread;
+	int t, i; 
 
 	mutex_lock(&drv->lock);
 
-	thread->restarting = true;
-	cpr_ctl_disable(thread);
-	disable_irq(drv->irq);
+	for (t = 0; t < drv->desc->num_threads; t++) {
+		thread = &drv->threads[t];
 
-	mutex_unlock(&drv->lock);
+		thread->restarting = true;
+		cpr_ctl_disable(thread);
+		disable_irq(drv->irq);
 
-	for (i = 0; i < 20; i++) {
-		u32 cpr_status = cpr_read(thread, CPR3_REG_CPR_STATUS);
-		u32 ctl = cpr_read(thread, CPR3_REG_CPR_CTL);
+		mutex_unlock(&drv->lock);
 
-		if ((cpr_status & CPR3_CPR_STATUS_BUSY_MASK) &&
-		   !(ctl & CPR3_CPR_CTL_LOOP_EN_MASK))
-			break;
+		for (i = 0; i < 20; i++) {
+			u32 cpr_status = cpr_read(thread, CPR3_REG_CPR_STATUS);
+			u32 ctl = cpr_read(thread, CPR3_REG_CPR_CTL);
 
-		udelay(10);
+			if ((cpr_status & CPR3_CPR_STATUS_BUSY_MASK) &&
+			!(ctl & CPR3_CPR_CTL_LOOP_EN_MASK))
+				break;
+
+			udelay(10);
+		}
+
+		cpr_irq_clr(thread);
+
+		for (i = 0; i < 20; i++) {
+			u32 status = cpr_read(thread, CPR3_REG_IRQ_STATUS);
+
+			if (!(status & CPR3_IRQ_ALL))
+				break;
+			udelay(10);
+		}
+
+		mutex_lock(&drv->lock);
+
+		thread->restarting = false;
+		enable_irq(drv->irq);
+		cpr_ctl_enable(thread);
 	}
-
-	cpr_irq_clr(thread);
-
-	for (i = 0; i < 20; i++) {
-		u32 status = cpr_read(thread, CPR3_REG_IRQ_STATUS);
-
-		if (!(status & CPR3_IRQ_ALL))
-			break;
-		udelay(10);
-	}
-
-	mutex_lock(&drv->lock);
-
-	thread->restarting = false;
-	enable_irq(drv->irq);
-	cpr_ctl_enable(thread);
 
 	mutex_unlock(&drv->lock);
 }
@@ -589,8 +597,8 @@ static int cpr_pre_voltage(struct cpr_thread *thread,
 		cpr_write(thread, CPR3_REG_PD_THROTTLE,
 			  drv->desc->pd_throttle_val);
 
-	if (drv->tcsr && dir == DOWN)
-		cpr_set_acc(drv, fuse_level);
+	//if (drv->tcsr && dir == DOWN)
+	//	cpr_set_acc(drv, fuse_level);
 
 	return 0;
 }
@@ -609,8 +617,8 @@ static int cpr_post_voltage(struct cpr_thread *thread,
 {
 	struct cpr_drv *drv = thread->drv;
 
-	if (drv->tcsr && dir == UP)
-		cpr_set_acc(drv, fuse_level);
+	//if (drv->tcsr && dir == UP)
+	//	cpr_set_acc(drv, fuse_level);
 
 	if (drv->desc->cpr_type == CTRL_TYPE_CPR3)
 		cpr_write(thread, CPR3_REG_PD_THROTTLE, 0);
@@ -664,13 +672,15 @@ static int cpr_commit_state(struct cpr_thread *thread)
 		return -EINVAL;
 	}
 
-	if (new_uV == drv->last_uV || fuse_level == drv->fuse_level_set)
+	if (new_uV == drv->last_uV)
 		goto out;
 
 	if (fuse_level > drv->fuse_level_set)
 		dir = UP;
-	else
+	else if (fuse_level < drv->fuse_level_set)
 		dir = DOWN;
+	else
+		dir = NO_CHANGE;
 
 	ret = cpr_pre_voltage(thread, fuse_level, dir);
 	if (ret)
@@ -770,24 +780,24 @@ static void cpr_scale(struct cpr_thread *thread, enum voltage_change_dir dir)
  */
 static irqreturn_t cpr_irq_handler(int irq, void *dev)
 {
-	struct cpr_thread *thread = dev;
-	struct cpr_drv *drv = thread->drv;
+	struct cpr_drv *drv = dev;
 	irqreturn_t ret = IRQ_HANDLED;
 	int i, rc;
+	struct cpr_thread *thread;
 	enum voltage_change_dir dir = NO_CHANGE;
 	u32 val;
 
 	mutex_lock(&drv->lock);
 
-	val = cpr_read(thread, CPR3_REG_IRQ_STATUS);
+	val = cpr_read(&drv->threads[0], CPR3_REG_IRQ_STATUS);
 
-	dev_vdbg(drv->dev, "IRQ_STATUS = %#02x\n", val);
+	dev_dbg(drv->dev, "IRQ_STATUS = %#02x\n", val);
 
-	if (!cpr_ctl_is_enabled(thread)) {
-		dev_vdbg(drv->dev, "CPR is disabled\n");
+	if (!cpr_ctl_is_enabled(&drv->threads[0])) {
+		dev_dbg(drv->dev, "CPR is disabled\n");
 		ret = IRQ_NONE;
-	} else if (cpr_check_any_thread_busy(thread)) {
-		cpr_irq_clr_nack(thread);
+	} else if (cpr_check_any_thread_busy(&drv->threads[0])) {
+		cpr_irq_clr_nack(&drv->threads[0]);
 		dev_dbg(drv->dev, "CPR measurement is not ready\n");
 	} else {
 		/*
@@ -802,9 +812,11 @@ static irqreturn_t cpr_irq_handler(int irq, void *dev)
 		if (dir != NO_CHANGE) {
 			for (i = 0; i < drv->desc->num_threads; i++) {
 				thread = &drv->threads[i];
+				if (!thread->attached_cpu_dev)
+					continue;
+
 				cpr_scale(thread, dir);
 			}
-
 			rc = cpr_commit_state(thread);
 			if (rc)
 				cpr_irq_clr_nack(thread);
@@ -814,7 +826,7 @@ static irqreturn_t cpr_irq_handler(int irq, void *dev)
 			dev_dbg(drv->dev, "IRQ occurred for Mid Flag\n");
 		} else {
 			dev_warn(drv->dev, "IRQ occurred for unknown flag (%#08x)\n", val);
-			schedule_work(&thread->restart_work);
+			schedule_work(&drv->restart_work);
 		}
 	}
 
@@ -1496,6 +1508,7 @@ static int cpr3_corner_init(struct cpr_thread *thread)
 		corner->max_uV = fuse->max_uV;
 		corner->min_uV = fuse->min_uV;
 		corner->uV = clamp(corner->uV, corner->min_uV, corner->max_uV);
+		corner->uV = roundup(corner->uV, drv->vreg_step);
 		dev_vdbg(drv->dev, "Clamped after interpolation: [%d %d %d]\n",
 			corner->min_uV, corner->uV, corner->max_uV);
 
@@ -1843,6 +1856,263 @@ static int cpr3_find_initial_corner(struct cpr_thread *thread)
 
 	return 0;
 }
+
+static const int msm8996_scaling_factor[][CPR3_RO_COUNT] = {
+	/* Fuse Corner 0 */
+	{
+		   0,    0, 3112, 2666, 2947, 2543, 2271, 1979,
+		2623, 2317, 2772, 2450,    0,    0,    0,    0,
+	},
+	/* Fuse Corner 1 */
+	{
+		   0,    0, 3112, 2666, 2947, 2543, 2271, 1979,
+		2623, 2317, 2772, 2450,    0,    0,    0,    0
+	},
+	/* Fuse Corner 2 */
+	{
+		   0,    0, 3112, 2666, 2947, 2543, 2271, 1979,
+		2623, 2317, 2772, 2450,    0,    0,    0,    0
+	},
+	/* Fuse Corner 3 */
+	{
+		   0,    0, 3112, 2666, 2947, 2543, 2271, 1979,
+		2623, 2317, 2772, 2450,    0,    0,    0,    0
+	},
+	/* Fuse Corner 4 */
+	{
+		   0,    0, 2889, 2528, 2740, 2426, 2310, 2040,
+		2519, 2257, 2668, 2372,    0,    0,    0,    0,
+	},
+};
+
+static const struct cpr_thread_desc msm8996_thread_gold = {
+	.controller_id = 0,
+	.hw_tid = 1,
+	.ro_scaling_factor = msm8996_scaling_factor,
+	.ro_avail_corners = ARRAY_SIZE(msm8996_scaling_factor),
+	.sensor_range_start = 15,
+	.sensor_range_end = 24,
+	.init_voltage_step = 10000,
+	.init_voltage_width = 6,
+	.step_quot_init_min = 11,
+	.step_quot_init_max = 13,
+	.num_fuse_corners = 5,
+	.fuse_corner_data = (struct fuse_corner_data[]){
+		/* fuse corner 0 */
+		{
+			.ref_uV = 605000,
+			.max_uV = 670000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = 0,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 1,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+		/* fuse corner 1 */
+		{
+			.ref_uV = 745000,
+			.max_uV = 745000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = -10000,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 379,
+			.max_quot_scale = 1,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+		/* fuse corner 2 */
+		{
+			.ref_uV = 745000,
+			.max_uV = 745000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = -15000,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 379,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 10,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+		/* fuse corner 3 */
+		{
+			.ref_uV = 905000,
+			.max_uV = 905000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = 0,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 235,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+		/* fuse corner 4 */
+		{
+			.ref_uV = 1140000,
+			.max_uV = 1140000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = -10000,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 322,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+	},
+};
+
+static const struct cpr_thread_desc msm8996_thread_silver = {
+	.controller_id = 0,
+	.hw_tid = 0,
+	.ro_scaling_factor = msm8996_scaling_factor,
+	.ro_avail_corners = ARRAY_SIZE(msm8996_scaling_factor),
+	.sensor_range_start = 0,
+	.sensor_range_end = 14,
+	.init_voltage_step = 10000,
+	.init_voltage_width = 6,
+	.step_quot_init_min = 11,
+	.step_quot_init_max = 13,
+	.num_fuse_corners = 5,
+	.fuse_corner_data = (struct fuse_corner_data[]){
+		/* fuse corner 0 */
+		{
+			.ref_uV = 605000,
+			.max_uV = 670000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = 0,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 1,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+		/* fuse corner 1 */
+		{
+			.ref_uV = 745000,
+			.max_uV = 745000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = -15000,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 304,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+		/* fuse corner 2 */
+		{
+			.ref_uV = 745000,
+			.max_uV = 745000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = -15000,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 304,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+
+		},
+		/* fuse corner 3 */
+		{
+			.ref_uV = 905000,
+			.max_uV = 905000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = -15000,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 287,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+		/* fuse corner 4 */
+		{
+			.ref_uV = 1140000,
+			.max_uV = 1140000,
+			.min_uV = 470000,
+			.range_uV = 80000,
+			.volt_cloop_adjust = -15000,
+			.volt_oloop_adjust = 0,
+			.max_volt_scale = 161,
+			.max_quot_scale = 2000,
+			.quot_offset = 0,
+			.quot_scale = 1,
+			.quot_adjust = 0,
+			.quot_offset_scale = 5,
+			.quot_offset_adjust = 0,
+		},
+	},
+};
+
+static const struct cpr_desc msm8996_cpr_desc = {
+	.cpr_type = CTRL_TYPE_CPR3,
+	.num_threads = 2,
+	.mem_acc_threshold = 700000,
+	.apm_threshold = 850000,
+	.apm_crossover = 850000,
+	.apm_hysteresis = 5000,
+	.cpr_base_voltage = 470000, //?
+	.cpr_max_voltage = 1140000, //?
+	.timer_delay_us = 3000,
+	.timer_cons_up = 0,
+	.timer_cons_down = 3,
+	.up_threshold = 2,
+	.down_threshold = 2,
+	.idle_clocks = 15,
+	.count_mode = CPR3_CPR_CTL_COUNT_MODE_ALL_AT_ONCE_MIN,
+	.count_repeat = 25,
+	.gcnt_us = 1,
+	.vreg_step_fixed = 5000,
+	.reduce_to_corner_uV = true, //-
+	.hw_closed_loop_en = false,
+	.threads = (const struct cpr_thread_desc *[]) {
+		&msm8996_thread_silver,
+		&msm8996_thread_gold,
+	},
+};
+
+static const struct acc_desc msm8996_acc_desc = {
+	.num_regs_per_fuse = 2,
+};
+
+static const struct cpr_acc_desc msm8996_cpr_acc_desc = {
+	.cpr_desc = &msm8996_cpr_desc,
+	.acc_desc = &msm8996_acc_desc,
+};
 
 static const int msm8998_gold_scaling_factor[][CPR3_RO_COUNT] = {
 	/* Fuse Corner 0 */
@@ -2305,14 +2575,14 @@ static unsigned int cpr_get_performance_state(struct generic_pm_domain *genpd,
 static int cpr_power_off(struct generic_pm_domain *domain)
 {
 	struct cpr_thread *thread = container_of(domain, struct cpr_thread, pd);
-
+	pr_info("CPR power off\n");
 	return cpr_disable(thread);
 }
 
 static int cpr_power_on(struct generic_pm_domain *domain)
 {
 	struct cpr_thread *thread = container_of(domain, struct cpr_thread, pd);
-
+	pr_info("CPR power on\n");
 	return cpr_enable(thread);
 }
 
@@ -2338,6 +2608,8 @@ static int cpr_pd_attach_dev(struct generic_pm_domain *domain,
 	const struct acc_desc *acc_desc = drv->acc_desc;
 	bool cprh_opp_remove_table = false;
 	int ret = 0;
+
+	pm_runtime_disable(dev);
 
 	mutex_lock(&drv->lock);
 
@@ -2594,8 +2866,10 @@ static int cpr_thread_init(struct cpr_drv *drv, int tid)
 	int ret;
 
 	if (tdesc->step_quot_init_min > CPR3_CPR_STEP_QUOT_MIN_MASK ||
-	    tdesc->step_quot_init_max > CPR3_CPR_STEP_QUOT_MAX_MASK)
+	    tdesc->step_quot_init_max > CPR3_CPR_STEP_QUOT_MAX_MASK) {
+		dev_err(drv->dev, "Step quotient limits for thread %d out of range\n", tid);
 		return -EINVAL;
+	}
 
 	thread->id = tid;
 	thread->drv = drv;
@@ -2610,18 +2884,27 @@ static int cpr_thread_init(struct cpr_drv *drv, int tid)
 
 	thread->cpr_fuses = cpr_get_fuses(drv->dev, tid,
 					  tdesc->num_fuse_corners);
-	if (IS_ERR(thread->cpr_fuses))
-		return PTR_ERR(thread->cpr_fuses);
+	if (IS_ERR(thread->cpr_fuses)) {
+		ret = PTR_ERR(thread->cpr_fuses);
+		dev_err(drv->dev, "Failed to get fuses for thread %d: %d\n", tid, ret);
+		return ret;
+	}
 
 	ret = cpr_populate_ring_osc_idx(thread->drv->dev, thread->fuse_corners,
 					thread->cpr_fuses,
 					tdesc->num_fuse_corners);
-	if (ret)
+	if (ret) {
+		dev_err(drv->dev, "Reading thread %d ring oscillator IDs failed: %d\n",
+				tid, ret);
 		return ret;
+	}
 
 	ret = cpr_fuse_corner_init(thread);
-	if (ret)
+	if (ret) {
+		dev_err(drv->dev, "Initializing fuse corners for thread %d failed: %d\n",
+				tid, ret);
 		return ret;
+	}
 
 	thread->pd.name = devm_kasprintf(drv->dev, GFP_KERNEL,
 					 "%s_thread%d",
@@ -2649,20 +2932,10 @@ static int cpr_thread_init(struct cpr_drv *drv, int tid)
 	drv->cell_data.domains[tid] = &thread->pd;
 
 	ret = pm_genpd_init(&thread->pd, NULL, false);
-	if (ret)
+	if (ret) {
+		dev_err(drv->dev, "Initializing PM domain for thread %d failed: %d\n",
+				tid, ret);
 		return ret;
-
-	/* On CPRhardened, the interrupts are managed in firmware */
-	if (desc->cpr_type < CTRL_TYPE_CPRH) {
-		INIT_WORK(&thread->restart_work, cpr_restart_worker);
-
-		ret = devm_request_threaded_irq(drv->dev, drv->irq,
-						NULL, cpr_irq_handler,
-						IRQF_ONESHOT |
-						IRQF_TRIGGER_RISING,
-						"cpr", drv);
-		if (ret)
-			return ret;
 	}
 
 	return 0;
@@ -2765,8 +3038,10 @@ static int cpr_probe(struct platform_device *pdev)
 
 	if (desc->cpr_type < CTRL_TYPE_CPRH) {
 		np = of_parse_phandle(dev->of_node, "acc-syscon", 0);
-		if (!np)
+		if (!np) {
+			dev_err(dev, "Failed to get mem-acc syscon");
 			return -ENODEV;
+		}
 
 		drv->tcsr = syscon_node_to_regmap(np);
 		of_node_put(np);
@@ -2775,17 +3050,25 @@ static int cpr_probe(struct platform_device *pdev)
 	}
 
 	ret = cpr3_resources_init(pdev, drv);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "Initializing resources failed: %d\n", ret);
 		return ret;
+	}
 
 	drv->irq = platform_get_irq_optional(pdev, 0);
-	if ((desc->cpr_type != CTRL_TYPE_CPRH) && (drv->irq < 0))
+	if ((desc->cpr_type != CTRL_TYPE_CPRH) && (drv->irq < 0)) {
+		dev_err(dev, "Failed to get IRQ\n");
 		return -EINVAL;
+	}
 
 	/* On CPRhardened, vreg access it not allowed */
 	drv->vreg = devm_regulator_get_optional(dev, "vdd");
-	if (desc->cpr_type != CTRL_TYPE_CPRH && IS_ERR(drv->vreg))
-		return PTR_ERR(drv->vreg);
+	if (desc->cpr_type != CTRL_TYPE_CPRH && IS_ERR(drv->vreg)) {
+		ret = PTR_ERR(drv->vreg);
+		if(ret != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get VDD supply: %d\n", ret);
+		return ret;
+	}
 
 	/*
 	 * On at least CPRhardened, vreg is unaccessible and there is no
@@ -2836,20 +3119,42 @@ static int cpr_probe(struct platform_device *pdev)
 	/* Initialize all threads */
 	for (i = 0; i < desc->num_threads; i++) {
 		ret = cpr_thread_init(drv, i);
-		if (ret)
+		if (ret) {
+			dev_err(dev, "Initializing thread %d failed: %d\n", i, ret);
 			return ret;
+		}
+	}
+
+	/* On CPRhardened, the interrupts are managed in firmware */
+	if (desc->cpr_type < CTRL_TYPE_CPRH) {
+		INIT_WORK(&drv->restart_work, cpr_restart_worker);
+
+		ret = devm_request_threaded_irq(drv->dev, drv->irq,
+					NULL, cpr_irq_handler,
+					IRQF_ONESHOT |
+					IRQF_TRIGGER_RISING,
+					"cpr", drv);
+
+		if (ret) {
+			dev_err(drv->dev, "Failed to request IRQ: %d\n", ret);
+			return ret;
+		}
 	}
 
 	/* Initialize global parameters */
 	ret = cpr3_init_parameters(drv);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "Initializing params failed: %d\n", ret);
 		return ret;
+	}
 
 	/* Write initial configuration on all threads */
 	for (i = 0; i < desc->num_threads; i++) {
 		ret = cpr_configure(&drv->threads[i]);
-		if (ret)
+		if (ret) {
+			dev_err(dev, "Configuring thread %d failed: %d\n", i, ret);
 			return ret;
+		}
 	}
 
 	ret = of_genpd_add_provider_onecell(dev->of_node, &drv->cell_data);
@@ -2881,6 +3186,7 @@ static int cpr_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id cpr3_match_table[] = {
+	{ .compatible = "qcom,msm8996-cpr3", .data = &msm8996_cpr_acc_desc },
 	{ .compatible = "qcom,msm8998-cprh", .data = &msm8998_cpr_acc_desc },
 	{ .compatible = "qcom,sdm630-cprh", .data = &sdm630_cpr_acc_desc },
 	{ }

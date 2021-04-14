@@ -14,6 +14,7 @@
  * This is used to determine the voltage and frequency value for each OPP of
  * operating-points-v2 table when it is parsed by the OPP framework.
  */
+#define DEBUG
 
 #include <linux/cpu.h>
 #include <linux/err.h>
@@ -182,8 +183,11 @@ static int qcom_cpufreq_krait_name_version(struct device *cpu_dev,
 	return 0;
 }
 
+static const char *kryo_genpd_names[] = { "cpr", NULL };
+
 static const struct qcom_cpufreq_match_data match_data_kryo = {
 	.get_version = qcom_cpufreq_kryo_name_version,
+	.genpd_names = kryo_genpd_names,
 };
 
 static const struct qcom_cpufreq_match_data match_data_krait = {

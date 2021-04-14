@@ -50,6 +50,8 @@
 			operating-points-v2 = <&cluster0_opp>;
 			#cooling-cells = <2>;
 			next-level-cache = <&L2_0>;
+			power-domains = <&apc_cpr3 0>;
+			power-domain-names = "cpr";
 			L2_0: l2-cache {
 			      compatible = "cache";
 			      cache-level = <2>;
@@ -67,6 +69,8 @@
 			operating-points-v2 = <&cluster0_opp>;
 			#cooling-cells = <2>;
 			next-level-cache = <&L2_0>;
+			power-domains = <&apc_cpr3 0>;
+			power-domain-names = "cpr";
 		};
 
 		CPU2: cpu@100 {
@@ -80,6 +84,8 @@
 			operating-points-v2 = <&cluster1_opp>;
 			#cooling-cells = <2>;
 			next-level-cache = <&L2_1>;
+			power-domains = <&apc_cpr3 1>;
+			power-domain-names = "cpr";
 			L2_1: l2-cache {
 			      compatible = "cache";
 			      cache-level = <2>;
@@ -97,6 +103,8 @@
 			operating-points-v2 = <&cluster1_opp>;
 			#cooling-cells = <2>;
 			next-level-cache = <&L2_1>;
+			power-domains = <&apc_cpr3 1>;
+			power-domain-names = "cpr";
 		};
 
 		cpu-map {
@@ -137,7 +145,7 @@
 
 	cluster0_opp: opp_table0 {
 		compatible = "operating-points-v2-kryo-cpu";
-		nvmem-cells = <&speedbin_efuse>;
+		nvmem-cells = <&cpr_efuse_speedbin>;
 		opp-shared;
 
 		/* Nominal fmax for now */
@@ -145,87 +153,103 @@
 			opp-hz = /bits/ 64 <307200000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp2>;
 		};
 		opp-422400000 {
 			opp-hz = /bits/ 64 <422400000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp3>;
 		};
 		opp-480000000 {
 			opp-hz = /bits/ 64 <480000000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp4>;
 		};
 		opp-556800000 {
 			opp-hz = /bits/ 64 <556800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp5>;
 		};
 		opp-652800000 {
 			opp-hz = /bits/ 64 <652800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp6>;
 		};
 		opp-729600000 {
 			opp-hz = /bits/ 64 <729600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp7>;
 		};
 		opp-844800000 {
 			opp-hz = /bits/ 64 <844800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp9>;
 		};
 		opp-960000000 {
 			opp-hz = /bits/ 64 <960000000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp10>;
 		};
 		opp-1036800000 {
 			opp-hz = /bits/ 64 <1036800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp11>;
 		};
 		opp-1113600000 {
 			opp-hz = /bits/ 64 <1113600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp12>;
 		};
 		opp-1190400000 {
 			opp-hz = /bits/ 64 <1190400000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp13>;
 		};
 		opp-1228800000 {
 			opp-hz = /bits/ 64 <1228800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp14>;
 		};
 		opp-1324800000 {
 			opp-hz = /bits/ 64 <1324800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp15>;
 		};
 		opp-1401600000 {
 			opp-hz = /bits/ 64 <1401600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp16>;
 		};
 		opp-1478400000 {
 			opp-hz = /bits/ 64 <1478400000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp17>;
 		};
 		opp-1593600000 {
 			opp-hz = /bits/ 64 <1593600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp20>;
 		};
 	};
 
 	cluster1_opp: opp_table1 {
 		compatible = "operating-points-v2-kryo-cpu";
-		nvmem-cells = <&speedbin_efuse>;
+		nvmem-cells = <&cpr_efuse_speedbin>;
 		opp-shared;
 
 		/* Nominal fmax for now */
@@ -233,126 +257,319 @@
 			opp-hz = /bits/ 64 <307200000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp2>;
 		};
 		opp-403200000 {
 			opp-hz = /bits/ 64 <403200000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp3>;
 		};
 		opp-480000000 {
 			opp-hz = /bits/ 64 <480000000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp4>;
 		};
 		opp-556800000 {
 			opp-hz = /bits/ 64 <556800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp5>;
 		};
 		opp-652800000 {
 			opp-hz = /bits/ 64 <652800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp6>;
 		};
 		opp-729600000 {
 			opp-hz = /bits/ 64 <729600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp7>;
 		};
 		opp-806400000 {
 			opp-hz = /bits/ 64 <806400000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp8>;
 		};
 		opp-883200000 {
 			opp-hz = /bits/ 64 <883200000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp9>;
 		};
 		opp-940800000 {
 			opp-hz = /bits/ 64 <940800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp10>;
 		};
 		opp-1036800000 {
 			opp-hz = /bits/ 64 <1036800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp11>;
 		};
 		opp-1113600000 {
 			opp-hz = /bits/ 64 <1113600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp12>;
 		};
 		opp-1190400000 {
 			opp-hz = /bits/ 64 <1190400000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp13>;
 		};
 		opp-1248000000 {
 			opp-hz = /bits/ 64 <1248000000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp14>;
 		};
 		opp-1324800000 {
 			opp-hz = /bits/ 64 <1324800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp15>;
 		};
 		opp-1401600000 {
 			opp-hz = /bits/ 64 <1401600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp16>;
 		};
 		opp-1478400000 {
 			opp-hz = /bits/ 64 <1478400000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp17>;
 		};
 		opp-1555200000 {
 			opp-hz = /bits/ 64 <1555200000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp18>;
 		};
 		opp-1632000000 {
 			opp-hz = /bits/ 64 <1632000000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp19>;
 		};
 		opp-1708800000 {
 			opp-hz = /bits/ 64 <1708800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp20>;
 		};
 		opp-1785600000 {
 			opp-hz = /bits/ 64 <1785600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp20>;
 		};
 		opp-1824000000 {
 			opp-hz = /bits/ 64 <1824000000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp22>;
 		};
 		opp-1920000000 {
 			opp-hz = /bits/ 64 <1920000000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp23>;
 		};
 		opp-1996800000 {
 			opp-hz = /bits/ 64 <1996800000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp24>;
 		};
 		opp-2073600000 {
 			opp-hz = /bits/ 64 <2073600000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp24>;
 		};
 		opp-2150400000 {
 			opp-hz = /bits/ 64 <2150400000>;
 			opp-supported-hw = <0x7>;
 			clock-latency-ns = <200000>;
+			required-opps = <&cpr3_opp27>;
+		};
+	};
+
+	/* TODO: Fill with v3.1 parameters */
+	cpr3_opp_table: cpr-opp-table {
+		compatible = "operating-points-v2-qcom-level";
+
+		cpr3_opp1: opp1 {
+			opp-level = <1>;
+			qcom,opp-fuse-level = <1>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp2: opp2 {
+			opp-level = <2>;
+			qcom,opp-fuse-level = <1>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp3: opp3 {
+			opp-level = <3>;
+			qcom,opp-fuse-level = <1>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp4: opp4 {
+			opp-level = <4>;
+			qcom,opp-fuse-level = <2 1>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp5: opp5 {
+			opp-level = <5>;
+			qcom,opp-fuse-level = <2>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp6: opp6 {
+			opp-level = <6>;
+			qcom,opp-fuse-level = <2>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp7: opp7 {
+			opp-level = <7>;
+			qcom,opp-fuse-level = <3 2>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp8: opp8 {
+			opp-level = <8>;
+			qcom,opp-fuse-level = <3>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp9: opp9 {
+			opp-level = <9>;
+			qcom,opp-fuse-level = <3>;
+			qcom,opp-oloop-vadj = <(-15000)>;
+			qcom,opp-cloop-vadj = <(-15000)>;
+		};
+		cpr3_opp10: opp10 {
+			opp-level = <10>;
+			qcom,opp-fuse-level = <3>;
+			qcom,opp-oloop-vadj = <(-17000) (-15000)>;
+			qcom,opp-cloop-vadj = <(-17000) (-15000)>;
+		};
+		cpr3_opp11: opp11 {
+			opp-level = <11>;
+			qcom,opp-fuse-level = <4 3>;
+			qcom,opp-oloop-vadj = <(-19000) (-17000)>;
+			qcom,opp-cloop-vadj = <(-19000) (-17000)>;
+		};
+		cpr3_opp12: opp12 {
+			opp-level = <12>;
+			qcom,opp-fuse-level = <4>;
+			qcom,opp-oloop-vadj = <(-21000) (-19000)>;
+			qcom,opp-cloop-vadj = <(-21000) (-19000)>;
+		};
+		cpr3_opp13: opp13 {
+			opp-level = <13>;
+			qcom,opp-fuse-level = <4>;
+			qcom,opp-oloop-vadj = <(-23000) (-21000)>;
+			qcom,opp-cloop-vadj = <(-21000) (-21000)>;
+		};
+		cpr3_opp14: opp14 {
+			opp-level = <14>;
+			qcom,opp-fuse-level = <4>;
+			qcom,opp-oloop-vadj = <(-25000) (-23000)>;
+			qcom,opp-cloop-vadj = <(-21000) (-23000)>;
+		};
+		cpr3_opp15: opp15 {
+			opp-level = <15>;
+			qcom,opp-fuse-level = <4>;
+			qcom,opp-oloop-vadj = <(-26000) (-25000)>;
+			qcom,opp-cloop-vadj = <(-21000) (-25000)>;
+		};
+		cpr3_opp16: opp16 {
+			opp-level = <16>;
+			qcom,opp-fuse-level = <5 4>;
+			qcom,opp-oloop-vadj = <(-27000) (-25000)>;
+			qcom,opp-cloop-vadj = <(-21000) (-25000)>;
+		};
+		cpr3_opp17: opp17 {
+			opp-level = <17>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <(-27000) (-26000)>;
+			qcom,opp-cloop-vadj = <(-21000) (-26000)>;
+		};
+		cpr3_opp18: opp18 {
+			opp-level = <18>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <(-28000) (-26000)>;
+			qcom,opp-cloop-vadj = <(-21000) (-26000)>;
+		};
+		cpr3_opp19: opp19 {
+			opp-level = <19>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <(-30000) (-27000)>;
+			qcom,opp-cloop-vadj = <(-21000) (-27000)>;
+		};
+		cpr3_opp20: opp20 {
+			opp-level = <20>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <0 (-27000)>;
+			qcom,opp-cloop-vadj = <0 (-27000)>;
+		};
+		cpr3_opp21: opp21 {
+			opp-level = <21>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <0 (-27000)>;
+			qcom,opp-cloop-vadj = <0 (-27000)>;
+		};
+		cpr3_opp22: opp22 {
+			opp-level = <22>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <0 (-28000)>;
+			qcom,opp-cloop-vadj = <0 (-28000)>;
+		};
+		cpr3_opp23: opp23 {
+			opp-level = <23>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <0 (-29000)>;
+			qcom,opp-cloop-vadj = <0 (-29000)>;
+		};
+		cpr3_opp24: opp24 {
+			opp-level = <24>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <0 (-29000)>;
+			qcom,opp-cloop-vadj = <0 (-29000)>;
+		};
+		cpr3_opp25: opp25 {
+			opp-level = <25>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <0 (-30000)>;
+			qcom,opp-cloop-vadj = <0 (-30000)>;
+		};
+		cpr3_opp26: opp26 {
+			opp-level = <26>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <0 (-30000)>;
+			qcom,opp-cloop-vadj = <0 (-30000)>;
+		};
+		cpr3_opp27: opp27 {
+			opp-level = <27>;
+			qcom,opp-fuse-level = <5>;
+			qcom,opp-oloop-vadj = <0 (-30000)>;
+			qcom,opp-cloop-vadj = <0 (-30000)>;
 		};
 	};
 
@@ -666,9 +883,214 @@
 				bits = <1 4>;
 			};
 
-			speedbin_efuse: speedbin@133 {
+			cpr_efuse_speedbin: speedbin@133 {
 				reg = <0x133 0x1>;
 				bits = <5 3>;
+			};
+
+			cpr_fuse_revision: cpr_fusing_rev@13e {
+				reg = <0x13e 0x1>;
+				bits = <3 3>;
+			};
+
+			/* CPR Ring Oscillator: Power Cluster */
+			cpr_ro_sel0_pwrcl: rosel0_pwrcl@214 {
+				reg = <0x214 0x2>;
+				bits = <6 4>;
+			};
+
+			cpr_ro_sel1_pwrcl: rosel1_pwrcl@214 {
+				reg = <0x214 0x2>;
+				bits = <6 4>;
+			};
+
+			cpr_ro_sel2_pwrcl: rosel2_pwrcl@214 {
+				reg = <0x214 0x2>;
+				bits = <6 4>;
+			};
+
+			cpr_ro_sel3_pwrcl: rosel3_pwrcl@214 {
+				reg = <0x214 0x1>;
+				bits = <2 4>;
+			};
+
+			cpr_ro_sel4_pwrcl: rosel4_pwrcl@213 {
+				reg = <0x213 0x2>;
+				bits = <6 4>;
+			};
+
+			/* CPR Init Voltage: Power Cluster */
+			cpr_init_voltage0_pwrcl: ivolt0_pwrcl@218 {
+				reg = <0x218 0x1>;
+				bits = <0 6>;
+			};
+
+			cpr_init_voltage1_pwrcl: ivolt1_pwrcl@217 {
+				reg = <0x217 0x1>;
+				bits = <2 6>;
+			};
+
+			cpr_init_voltage2_pwrcl: ivolt2_pwrcl@217 {
+				reg = <0x217 0x1>;
+				bits = <2 6>;
+			};
+
+			cpr_init_voltage3_pwrcl: ivolt3_pwrcl@216 {
+				reg = <0x216 0x2>;
+				bits = <4 6>;
+			};
+
+			cpr_init_voltage4_pwrcl: ivolt4_pwrcl@215 {
+				reg = <0x215 0x2>;
+				bits = <6 6>;
+			};
+
+			/* CPR Target Quotients: Power Cluster */
+			cpr_quot0_pwrcl: quot0_pwrcl@21d {
+				reg = <0x21d 0x2>;
+				bits = <2 12>;
+			};
+
+			cpr_quot1_pwrcl: quot1_pwrcl@21b {
+				reg = <0x21b 0x3>;
+				bits = <6 12>;
+			};
+
+			cpr_quot2_pwrcl: quot2_pwrcl@21b {
+				reg = <0x21b 0x3>;
+				bits = <6 12>;
+			};
+
+			cpr_quot3_pwrcl: quot3_pwrcl@21a {
+				reg = <0x21a 0x2>;
+				bits = <2 12>;
+			};
+
+			cpr_quot4_pwrcl: quot4_pwrcl@218 {
+				reg = <0x218 0x3>;
+				bits = <6 12>;
+			};
+
+			/* CPR Quotient Offsets: Power Cluster */
+			cpr_quot_offset1_pwrcl: qoff1_pwrcl@220 {
+				reg = <0x220 0x2>;
+				bits = <6 8>;
+			};
+
+			cpr_quot_offset2_pwrcl: qoff2_pwrcl@21f {
+				reg = <0x21f 0x2>;
+				bits = <6 8>;
+			};
+
+			cpr_quot_offset3_pwrcl: qoff3_pwrcl@21e {
+				reg = <0x21e 0x2>;
+				bits = <6 8>;
+			};
+
+			/* CPR Aging Quotient Offsets: Power Cluster */
+			cpr_aging_quot_off_pwrcl: qoff_aging_pwrcl@221 {
+				reg = <0x221 0x2>;
+				bits = <6 6>;
+			};
+
+			/* CPR Ring Oscillator: Performance Cluster */
+			cpr_ro_sel0_perfcl: rosel0_perfcl@206 {
+				reg = <0x206 0x2>;
+				bits = <6 4>;
+			};
+
+			cpr_ro_sel1_perfcl: rosel1_perfcl@206 {
+				reg = <0x206 0x2>;
+				bits = <6 4>;
+			};
+
+			cpr_ro_sel2_perfcl: rosel2_perfcl@206 {
+				reg = <0x206 0x2>;
+				bits = <6 4>;
+			};
+
+			cpr_ro_sel3_perfcl: rosel3_perfcl@206 {
+				reg = <0x206 0x1>;
+				bits = <2 4>;
+			};
+
+			cpr_ro_sel4_perfcl: rosel4_perfcl@205 {
+				reg = <0x205 0x2>;
+				bits = <6 4>;
+			};
+
+			/* CPR Init Voltage: Performance Cluster */
+			cpr_init_voltage0_perfcl: ivolt0_perfcl@20a {
+				reg = <0x20a 0x1>;
+				bits = <0 6>;
+			};
+
+			cpr_init_voltage1_perfcl: ivolt1_perfcl@209 {
+				reg = <0x209 0x1>;
+				bits = <2 6>;
+			};
+
+			cpr_init_voltage2_perfcl: ivolt2_perfcl@209 {
+				reg = <0x209 0x1>;
+				bits = <2 6>;
+			};
+
+			cpr_init_voltage3_perfcl: ivolt3_perfcl@208 {
+				reg = <0x208 0x2>;
+				bits = <4 6>;
+			};
+
+			cpr_init_voltage4_perfcl: ivolt4_perfcl@207 {
+				reg = <0x207 0x2>;
+				bits = <6 6>;
+			};
+
+			/* CPR Target Quotients: Performance Cluster */
+			cpr_quot0_perfcl: quot0_perfcl@20f {
+				reg = <0x20f 0x2>;
+				bits = <2 12>;
+			};
+
+			cpr_quot1_perfcl: quot1_perfcl@20d {
+				reg = <0x20d 0x3>;
+				bits = <6 12>;
+			};
+
+			cpr_quot2_perfcl: quot2_perfcl@20d {
+				reg = <0x20d 0x3>;
+				bits = <6 12>;
+			};
+
+			cpr_quot3_perfcl: quot3_perfcl@20c {
+				reg = <0x20c 0x2>;
+				bits = <2 12>;
+			};
+
+			cpr_quot4_perfcl: quot4_perfcl@20a {
+				reg = <0x20a 0x3>;
+				bits = <6 12>;
+			};
+
+			/* CPR Quotient Offsets: Performance Cluster */
+			cpr_quot_offset1_perfcl: qoff1_perfcl@212 {
+				reg = <0x212 0x2>;
+				bits = <6 8>;
+			};
+
+			cpr_quot_offset2_perfcl: qoff2_perfcl@211 {
+				reg = <0x211 0x2>;
+				bits = <6 8>;
+			};
+
+			cpr_quot_offset3_perfcl: qoff3_perfcl@210 {
+				reg = <0x210 0x2>;
+				bits = <6 8>;
+			};
+
+			/* CPR Aging Quotient Offsets: Performance Cluster */
+			cpr_aging_quot_off_perfcl: qoff_aging_perfcl@221 {
+				reg = <0x221 0x2>;
+				bits = <6 6>;
 			};
 		};
 
@@ -1127,7 +1549,7 @@
 			power-domains = <&mmcc GPU_GX_GDSC>;
 			iommus = <&adreno_smmu 0>;
 
-			nvmem-cells = <&speedbin_efuse>;
+			nvmem-cells = <&cpr_efuse_speedbin>;
 			nvmem-cell-names = "speed_bin";
 
 			qcom,gpu-quirk-two-pass-use-wfi;
@@ -3449,6 +3871,111 @@
 				reg = <0x098c0000 0x1000>;
 				status = "disabled";
 			};
+		};
+
+		apc_mem_acc: syscon@99e00c0 {
+			compatible = "syscon";
+			reg = <0x099e00c0 0x4>;
+		};
+
+		apc_cpr3: power-controller@99e8000 {
+			compatible = "qcom,msm8996-cpr3";
+			reg = <0x099e8000 0x4000>;
+
+			interrupts = <GIC_SPI 48 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "cpr";
+
+			assigned-clocks = <&gcc GCC_HMSS_RBCPR_CLK>;
+			assigned-clock-rates = <19200000>;
+			clocks = <&gcc GCC_HMSS_RBCPR_CLK>;
+			clock-names = "ref";
+
+			acc-syscon = <&apc_mem_acc>;
+
+			#power-domain-cells = <1>;
+			status = "disabled";
+
+			nvmem-cells = <&cpr_efuse_speedbin>,
+				      <&cpr_fuse_revision>,
+				      <&cpr_quot0_pwrcl>,
+				      <&cpr_quot1_pwrcl>,
+				      <&cpr_quot2_pwrcl>,
+				      <&cpr_quot3_pwrcl>,
+				      <&cpr_quot4_pwrcl>,
+				      <&cpr_quot_offset1_pwrcl>,
+				      <&cpr_quot_offset2_pwrcl>,
+				      <&cpr_quot_offset3_pwrcl>,
+				      <&cpr_init_voltage0_pwrcl>,
+				      <&cpr_init_voltage1_pwrcl>,
+				      <&cpr_init_voltage2_pwrcl>,
+				      <&cpr_init_voltage3_pwrcl>,
+				      <&cpr_init_voltage4_pwrcl>,
+				      <&cpr_ro_sel0_pwrcl>,
+				      <&cpr_ro_sel1_pwrcl>,
+				      <&cpr_ro_sel2_pwrcl>,
+				      <&cpr_ro_sel3_pwrcl>,
+				      <&cpr_ro_sel4_pwrcl>,
+				      <&cpr_aging_quot_off_pwrcl>,
+				      <&cpr_quot0_perfcl>,
+				      <&cpr_quot1_perfcl>,
+				      <&cpr_quot2_perfcl>,
+				      <&cpr_quot3_perfcl>,
+				      <&cpr_quot4_perfcl>,
+				      <&cpr_quot_offset1_perfcl>,
+				      <&cpr_quot_offset2_perfcl>,
+				      <&cpr_quot_offset3_perfcl>,
+				      <&cpr_init_voltage0_perfcl>,
+				      <&cpr_init_voltage1_perfcl>,
+				      <&cpr_init_voltage2_perfcl>,
+				      <&cpr_init_voltage3_perfcl>,
+				      <&cpr_init_voltage4_perfcl>,
+				      <&cpr_ro_sel0_perfcl>,
+				      <&cpr_ro_sel1_perfcl>,
+				      <&cpr_ro_sel2_perfcl>,
+				      <&cpr_ro_sel3_perfcl>,
+				      <&cpr_ro_sel4_perfcl>,
+				      <&cpr_aging_quot_off_perfcl>;
+
+			nvmem-cell-names = "cpr_speed_bin",
+					   "cpr_fuse_revision",
+					   "cpr0_quotient1",
+					   "cpr0_quotient2",
+					   "cpr0_quotient3",
+					   "cpr0_quotient4",
+					   "cpr0_quotient5",
+					   "cpr0_quotient_offset3",
+					   "cpr0_quotient_offset4",
+					   "cpr0_quotient_offset5",
+					   "cpr0_init_voltage1",
+					   "cpr0_init_voltage2",
+					   "cpr0_init_voltage3",
+					   "cpr0_init_voltage4",
+					   "cpr0_init_voltage5",
+					   "cpr0_ring_osc1",
+					   "cpr0_ring_osc2",
+					   "cpr0_ring_osc3",
+					   "cpr0_ring_osc4",
+					   "cpr0_ring_osc5",
+					   "cpr0_aging_quotient",
+					   "cpr1_quotient1",
+					   "cpr1_quotient2",
+					   "cpr1_quotient3",
+					   "cpr1_quotient4",
+					   "cpr1_quotient5",
+					   "cpr1_quotient_offset3",
+					   "cpr1_quotient_offset4",
+					   "cpr1_quotient_offset5",
+					   "cpr1_init_voltage1",
+					   "cpr1_init_voltage2",
+					   "cpr1_init_voltage3",
+					   "cpr1_init_voltage4",
+					   "cpr1_init_voltage5",
+					   "cpr1_ring_osc1",
+					   "cpr1_ring_osc2",
+					   "cpr1_ring_osc3",
+					   "cpr1_ring_osc4",
+					   "cpr1_ring_osc5",
+					   "cpr1_aging_quotient";
 		};
 
 		saw3: syscon@9a10000 {

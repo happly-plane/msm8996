@@ -307,7 +307,7 @@ int cpr_calculate_scaling(const char *quot_offset,
 		quot_diff *= fdata->quot_offset_scale;
 		quot_diff += fdata->quot_offset_adjust;
 	} else {
-		quot_diff = fuse->quot - prev_fuse->quot;
+		quot_diff = fuse->quot + corner->quot_adjust - prev_fuse->quot;
 	}
 
 	freq_diff = fuse->max_freq - prev_fuse->max_freq;
@@ -354,7 +354,7 @@ int cpr_interpolate(const struct corner *corner, int step_volt,
 	do_div(temp_limit, 1000000);
 
 	uV = uV_high - min(temp, temp_limit);
-	return roundup(uV, step_volt);
+	return uV;//roundup(uV, step_volt);
 }
 EXPORT_SYMBOL_GPL(cpr_interpolate);
 
