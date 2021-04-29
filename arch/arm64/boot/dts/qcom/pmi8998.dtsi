@@ -61,6 +61,14 @@
 			qcom,wave-shape = <HAP_WAVE_SINE>;
 			qcom,play-mode = <HAP_PLAY_BUFFER>;
 			qcom,brake-pattern = <0x3 0x3 0x2 0x1>;
+		};
+
+		pmi8998_lpg: lpg {
+			compatible = "qcom,pmi8998-lpg";
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+			#pwm-cells = <2>;
 
 			status = "disabled";
 		};
