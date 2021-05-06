@@ -2151,6 +2151,45 @@
 			clock-names = "iface", "bus";
 		};
 
+		slpi_pil: remoteproc@1c00000 {
+			compatible = "qcom,msm8996-slpi-pil";
+			reg = <0x01c00000 0x4000>;
+
+			interrupts-extended = <&intc 0 390 IRQ_TYPE_EDGE_RISING>,
+					      <&slpi_smp2p_in 0 IRQ_TYPE_EDGE_RISING>,
+					      <&slpi_smp2p_in 1 IRQ_TYPE_EDGE_RISING>,
+					      <&slpi_smp2p_in 2 IRQ_TYPE_EDGE_RISING>,
+					      <&slpi_smp2p_in 3 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "wdog",
+					  "fatal",
+					  "ready",
+					  "handover",
+					  "stop-ack";
+
+			clocks = <&xo_board>,
+			         <&rpmcc RPM_SMD_AGGR2_NOC_CLK>;
+			clock-names = "xo", "aggre2";
+
+			memory-region = <&slpi_mem>;
+
+			qcom,smem-states = <&slpi_smp2p_out 0>;
+			qcom,smem-state-names = "stop";
+
+			power-domains = <&rpmpd MSM8996_VDDSSCX>;
+			power-domain-names = "ssc_cx";
+
+			status = "disabled";
+
+			smd-edge {
+				interrupts = <GIC_SPI 176 IRQ_TYPE_EDGE_RISING>;
+
+				label = "dsps";
+				mboxes = <&apcs_glb 25>;
+				qcom,smd-edge = <3>;
+				qcom,remote-pid = <3>;
+			};
+		};
+
 		mss_pil: remoteproc@2080000 {
 			compatible = "qcom,msm8996-mss-pil";
 
