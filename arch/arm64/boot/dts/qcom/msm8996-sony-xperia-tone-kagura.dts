@@ -13,3 +13,7 @@
 	model = "Sony Xperia XZ";
 	compatible = "sony,kagura-row", "qcom,msm8996";
 };
+
+&panel {
+	compatible = "sony,synaptics-jdi-kagura";
+};
