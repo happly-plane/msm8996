@@ -242,6 +242,8 @@
 
 &adsp_pil {
 	status = "okay";
+
+	firmware-name = "qcom/msm8996/scorpio/adsp.mbn";
 };
 
 &blsp2_i2c2 {
@@ -366,6 +368,10 @@
 
 &gpu {
 	status = "okay";
+
+	zap-shader {
+		firmware-name = "qcom/msm8996/scorpio/a530_zap.mbn";
+	};
 };
 
 &mdss {
@@ -392,6 +398,9 @@
 	status = "okay";
 
 	pll-supply = <&vreg_l12a_1p8>;
+
+	firmware-name = "qcom/msm8996/scorpio/mba.mbn",
+			"qcom/msm8996/scorpio/modem.mbn";
 };
 
 &pcie0 {
@@ -503,6 +512,10 @@
 
 &slpi_pil {
 	status = "okay";
+
+	px-supply = <&vreg_lvs2a_1p8>;
+
+	firmware-name = "qcom/msm8996/scorpio/slpi.mbn";
 };
 
 &sound {
@@ -617,6 +630,10 @@
 	vddp-ref-clk-supply = <&vreg_l25a_1p2>;
 	vddp-ref-clk-max-microamp = <100>;
 	vddp-ref-clk-always-on;
+};
+
+&venus {
+	firmware-name = "qcom/msm8996/scorpio/venus.mbn";
 };
 
 &wcd9335 {
