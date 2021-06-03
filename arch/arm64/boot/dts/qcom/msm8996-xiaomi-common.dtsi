@@ -244,22 +244,6 @@
 	};
 };
 
-&CPU0 {
-	cpu-supply = <&vreg_apc_0p8>;
-};
-
-&CPU1 {
-	cpu-supply = <&vreg_apc_0p8>;
-};
-
-&CPU2 {
-	cpu-supply = <&vreg_apc_0p8>;
-};
-
-&CPU3 {
-	cpu-supply = <&vreg_apc_0p8>;
-};
-
 &dsi0 {
 	status = "okay";
 
