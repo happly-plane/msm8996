@@ -1082,21 +1082,21 @@
 
 			camera0_state_on:
 			camera_rear_default: camera-rear-default {
-				mclk0 {
+				camera0_mclk: mclk0 {
 					pins = "gpio13";
 					function = "cam_mclk";
 					drive-strength = <16>;
 					bias-disable;
 				};
 
-				rst {
+				camera0_rst: rst {
 					pins = "gpio25";
 					function = "gpio";
 					drive-strength = <16>;
 					bias-disable;
 				};
 
-				pwdn {
+				camera0_pwdn: pwdn {
 					pins = "gpio26";
 					function = "gpio";
 					drive-strength = <16>;
@@ -1137,14 +1137,14 @@
 
 			camera2_state_on:
 			camera_front_default: camera-front-default {
-				mclk2 {
+				camera2_mclk: mclk2 {
 					pins = "gpio15";
 					function = "cam_mclk";
 					drive-strength = <16>;
 					bias-disable;
 				};
 
-				rst {
+				camera2_rst: rst {
 					pins = "gpio23";
 					function = "gpio";
 					drive-strength = <16>;
