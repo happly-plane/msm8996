@@ -357,7 +357,7 @@
 };
 
 &slpi_pil {
-	status = "okay";
+	status = "disabled";
 
 	px-supply = <&vreg_lvs2a_1p8>;
 };

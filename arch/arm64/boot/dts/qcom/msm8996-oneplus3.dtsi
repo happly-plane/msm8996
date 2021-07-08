@@ -853,7 +853,7 @@
 };
 
 &slpi_pil {
-	status = "okay";
+	status = "disabled";
 };
 
 &sound {
