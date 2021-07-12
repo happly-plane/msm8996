@@ -1417,6 +1417,7 @@ static int qcom_slim_ngd_ssr_notify(struct notifier_block *nb,
 	struct qcom_slim_ngd_ctrl *ctrl = container_of(nb,
 					       struct qcom_slim_ngd_ctrl, nb);
 
+	dev_info(ctrl->dev, "SSR\n");
 	return qcom_slim_ngd_ssr_pdr_notify(ctrl, action);
 }
 
@@ -1424,6 +1425,7 @@ static void slim_pd_status(int state, char *svc_path, void *priv)
 {
 	struct qcom_slim_ngd_ctrl *ctrl = (struct qcom_slim_ngd_ctrl *)priv;
 
+	dev_info(ctrl->dev, "PDR\n");
 	qcom_slim_ngd_ssr_pdr_notify(ctrl, state);
 }
 static int of_qcom_slim_ngd_register(struct device *parent,
