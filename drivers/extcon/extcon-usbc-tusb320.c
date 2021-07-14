@@ -13,21 +13,47 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/regmap.h>
-
+ 
 #define TUSB320_REG9				0x9
 #define TUSB320_REG9_ATTACHED_STATE_SHIFT	6
 #define TUSB320_REG9_ATTACHED_STATE_MASK	0x3
 #define TUSB320_REG9_CABLE_DIRECTION		BIT(5)
 #define TUSB320_REG9_INTERRUPT_STATUS		BIT(4)
-#define TUSB320_ATTACHED_STATE_NONE		0x0
-#define TUSB320_ATTACHED_STATE_DFP		0x1
-#define TUSB320_ATTACHED_STATE_UFP		0x2
-#define TUSB320_ATTACHED_STATE_ACC		0x3
+
+#define TUSB320_REGA				0xa
+#define TUSB320L_REGA_DISABLE_TERM		BIT(0)
+#define TUSB320_REGA_I2C_SOFT_RESET		BIT(3)
+#define TUSB320_REGA_MODE_SELECT_SHIFT		4
+#define TUSB320_REGA_MODE_SELECT_MASK		0x3
+
+#define TUSB320L_REGA0_REVISION			0xa0
+
+enum tusb320_attached_state {
+	TUSB320_ATTACHED_STATE_NONE,
+	TUSB320_ATTACHED_STATE_DFP,
+	TUSB320_ATTACHED_STATE_UFP,
+	TUSB320_ATTACHED_STATE_ACC,
+};
+
+enum tusb320_mode {
+	TUSB320_MODE_PORT,
+	TUSB320_MODE_UFP,
+	TUSB320_MODE_DFP,
+	TUSB320_MODE_DRP,
+};
+
+enum tusb320_type {
+	TYPE_TUSB320,
+	TYPE_TUSB320L,
+};
 
 struct tusb320_priv {
 	struct device *dev;
 	struct regmap *regmap;
+	enum tusb320_type type;
 	struct extcon_dev *edev;
+
+	enum tusb320_attached_state state;
 };
 
 static const char * const tusb_attached_states[] = {
@@ -35,6 +61,13 @@ static const char * const tusb_attached_states[] = {
 	[TUSB320_ATTACHED_STATE_DFP]  = "downstream facing port",
 	[TUSB320_ATTACHED_STATE_UFP]  = "upstream facing port",
 	[TUSB320_ATTACHED_STATE_ACC]  = "accessory",
+};
+
+static const char * const tusb_modes[] = {
+	[TUSB320_MODE_PORT] = "maintain mode set by PORT pin",
+	[TUSB320_MODE_UFP]  = "upstream facing port",
+	[TUSB320_MODE_DFP]  = "downstream facing port",
+	[TUSB320_MODE_DRP]  = "dual role port",
 };
 
 static const unsigned int tusb320_extcon_cable[] = {
@@ -62,26 +95,106 @@ static int tusb320_check_signature(struct tusb320_priv *priv)
 	return 0;
 }
 
+static int tusb320_set_mode(struct tusb320_priv *priv, enum tusb320_mode mode)
+{
+	int ret;
+
+	if(priv->type == TYPE_TUSB320)
+		goto write_mode;
+
+	/* Disable CC state machine */
+	ret = regmap_write_bits(priv->regmap, TUSB320_REGA,
+		TUSB320L_REGA_DISABLE_TERM, 1);
+	if(ret) {
+		dev_err(priv->dev,
+			"failed to disable CC state machine: %d\n", ret);
+		return ret;
+	}
+
+write_mode:
+	/* Mode cannot be changed on TUSB320 while cable is attached */
+	if(priv->type == TYPE_TUSB320 && priv->state != TUSB320_ATTACHED_STATE_NONE)
+		return -EBUSY;
+
+	/* Write mode */
+	ret = regmap_write_bits(priv->regmap, TUSB320_REGA,
+		TUSB320_REGA_MODE_SELECT_MASK << TUSB320_REGA_MODE_SELECT_SHIFT,
+		mode << TUSB320_REGA_MODE_SELECT_SHIFT);
+	if(ret) {
+		dev_err(priv->dev, "failed to write mode: %d\n", ret);
+		return ret;
+	}
+
+	if(priv->type == TYPE_TUSB320)
+		return 0;
+
+	msleep(5);
+
+	/* Re-enable CC state machine */
+	ret = regmap_write_bits(priv->regmap, TUSB320_REGA,
+		TUSB320L_REGA_DISABLE_TERM, 0);
+	if(ret) {
+		dev_err(priv->dev,
+			"failed to re-enable CC state machine: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int tusb320_reset(struct tusb320_priv *priv)
+{
+	int ret;
+
+	/* Set mode to default (follow PORT pin) */
+	ret = tusb320_set_mode(priv, TUSB320_MODE_PORT);
+	if(ret && ret != -EBUSY) {
+		dev_err(priv->dev,
+			"failed to set mode to PORT: %d\n", ret);
+		return ret;
+	}
+
+	/* Perform soft reset */
+	ret = regmap_write_bits(priv->regmap, TUSB320_REGA,
+			TUSB320_REGA_I2C_SOFT_RESET, 1);
+	if(ret) {
+		dev_err(priv->dev,
+			"failed to write soft reset bit: %d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static irqreturn_t tusb320_irq_handler(int irq, void *dev_id)
 {
 	struct tusb320_priv *priv = dev_id;
-	int state, polarity;
-	unsigned reg;
+	int state, polarity, mode;
+	unsigned reg9;
+	unsigned rega;
 
-	if (regmap_read(priv->regmap, TUSB320_REG9, &reg)) {
-		dev_err(priv->dev, "error during i2c read!\n");
+	if (regmap_read(priv->regmap, TUSB320_REG9, &reg9)) {
+		dev_err(priv->dev, "error during register 0x9 i2c read!\n");
 		return IRQ_NONE;
 	}
 
-	if (!(reg & TUSB320_REG9_INTERRUPT_STATUS))
+	if (regmap_read(priv->regmap, TUSB320_REGA, &rega)) {
+		dev_err(priv->dev, "error during register 0xa i2c read!\n");
+		return IRQ_NONE;
+	}
+
+	if (!(reg9 & TUSB320_REG9_INTERRUPT_STATUS))
 		return IRQ_NONE;
 
-	state = (reg >> TUSB320_REG9_ATTACHED_STATE_SHIFT) &
+	state = (reg9 >> TUSB320_REG9_ATTACHED_STATE_SHIFT) &
 		TUSB320_REG9_ATTACHED_STATE_MASK;
-	polarity = !!(reg & TUSB320_REG9_CABLE_DIRECTION);
+	polarity = !!(reg9 & TUSB320_REG9_CABLE_DIRECTION);
 
-	dev_dbg(priv->dev, "attached state: %s, polarity: %d\n",
-		tusb_attached_states[state], polarity);
+	mode = (rega >> TUSB320_REGA_MODE_SELECT_SHIFT) &
+		TUSB320_REGA_MODE_SELECT_MASK;
+
+	dev_dbg(priv->dev, "mode: %s, attached state: %s, polarity: %d\n",
+		tusb_modes[mode], tusb_attached_states[state], polarity);
 
 	extcon_set_state(priv->edev, EXTCON_USB,
 			 state == TUSB320_ATTACHED_STATE_UFP);
@@ -96,7 +209,10 @@ static irqreturn_t tusb320_irq_handler(int irq, void *dev_id)
 	extcon_sync(priv->edev, EXTCON_USB);
 	extcon_sync(priv->edev, EXTCON_USB_HOST);
 
-	regmap_write(priv->regmap, TUSB320_REG9, reg);
+	priv->state = state;
+
+	regmap_write(priv->regmap, TUSB320_REG9, reg9);
+	regmap_write(priv->regmap, TUSB320_REGA, rega);
 
 	return IRQ_HANDLED;
 }
@@ -110,6 +226,8 @@ static int tusb320_extcon_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	struct tusb320_priv *priv;
+	const void *match_data;
+	unsigned int revision;
 	int ret;
 
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
@@ -125,6 +243,22 @@ static int tusb320_extcon_probe(struct i2c_client *client,
 	if (ret)
 		return ret;
 
+	match_data = device_get_match_data(&client->dev);
+	if (!match_data)
+		return -EINVAL;
+
+	priv->type = (enum tusb320_type)match_data;
+
+	if(priv->type == TYPE_TUSB320L) {
+		ret = regmap_read(priv->regmap, TUSB320L_REGA0_REVISION, &revision);
+
+		if(ret < 0)
+			dev_warn(priv->dev,
+				"failed to read revision register: %d\n", ret);
+		else
+			dev_info(priv->dev, "chip revision %d\n", revision);
+	}
+
 	priv->edev = devm_extcon_dev_allocate(priv->dev, tusb320_extcon_cable);
 	if (IS_ERR(priv->edev)) {
 		dev_err(priv->dev, "failed to allocate extcon device\n");
@@ -136,6 +270,11 @@ static int tusb320_extcon_probe(struct i2c_client *client,
 		dev_err(priv->dev, "failed to register extcon device\n");
 		return ret;
 	}
+
+	/* Reset chip to its default state */
+	ret = tusb320_reset(priv);
+	if(ret)
+		dev_warn(priv->dev, "failed to reset chip: %d\n", ret);
 
 	extcon_set_property_capability(priv->edev, EXTCON_USB,
 				       EXTCON_PROP_USB_TYPEC_POLARITY);
@@ -154,7 +293,8 @@ static int tusb320_extcon_probe(struct i2c_client *client,
 }
 
 static const struct of_device_id tusb320_extcon_dt_match[] = {
-	{ .compatible = "ti,tusb320", },
+	{ .compatible = "ti,tusb320", .data = (void *)TYPE_TUSB320, },
+	{ .compatible = "ti,tusb320l", .data = (void *)TYPE_TUSB320L, },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, tusb320_extcon_dt_match);
