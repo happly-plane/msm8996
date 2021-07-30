@@ -54,6 +54,9 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/pm_domain.h>
+#include <linux/pm_opp.h>
+#include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <soc/qcom/kryo-l2-accessors.h>
 
@@ -641,6 +644,45 @@ static int cbf_clk_notifier_cb(struct notifier_block *nb, unsigned long event,
 	return notifier_from_errno(ret);
 };
 
+static int cbf_attach(struct generic_pm_domain *domain, struct device *dev)
+{
+	dev_dbg(dev, "Attached CBF power domain\n");
+	pm_runtime_disable(dev);
+
+	return 0;
+}
+
+static unsigned int cbf_get_performance_state(struct generic_pm_domain *genpd,
+					      struct dev_pm_opp *opp)
+{
+	return dev_pm_opp_get_level(opp);
+}
+
+static int cbf_set_performance_state(struct generic_pm_domain *domain,
+				     unsigned int state)
+{
+	unsigned long freq;
+	struct dev_pm_opp *opp;
+
+	opp = dev_pm_opp_find_level_ceil(&domain->dev, &state);
+	if (IS_ERR(opp))
+		return PTR_ERR(opp);
+
+	freq = dev_pm_opp_get_freq(opp);
+
+	dev_vdbg(&domain->dev, "Setting CBF frequency to %lu", freq);
+
+	return clk_set_rate(cbf_mux.clkr.hw.clk, freq);
+}
+
+static struct generic_pm_domain cbf_msm8996_pd = {
+	.name = "cbf",
+	.attach_dev = cbf_attach,
+	.opp_to_performance_state = cbf_get_performance_state,
+	.set_performance_state = cbf_set_performance_state,
+	.flags = GENPD_FLAG_ALWAYS_ON,
+};
+
 static int qcom_cpu_clk_msm8996_driver_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap, *regmap_cbf;
@@ -649,7 +691,7 @@ static int qcom_cpu_clk_msm8996_driver_probe(struct platform_device *pdev)
 	static void __iomem *cbf_base;
 	int ret;
 
-	data = devm_kzalloc(dev, struct_size(data, hws, 3), GFP_KERNEL);
+	data = devm_kzalloc(dev, struct_size(data, hws, 2), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
@@ -679,10 +721,21 @@ static int qcom_cpu_clk_msm8996_driver_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	ret = pm_genpd_init(&cbf_msm8996_pd, NULL, false);
+	if (ret) {
+		dev_err(dev, "Failed to initialize CBF power domain: %d\n", ret);
+		return ret;
+	}
+
+	ret = of_genpd_add_provider_simple(dev->of_node, &cbf_msm8996_pd);
+	if (ret) {
+		dev_err(dev, "Failed to add genpd provider: %d\n", ret);
+		return ret;
+	}
+
 	data->hws[0] = &pwrcl_pmux.clkr.hw;
 	data->hws[1] = &perfcl_pmux.clkr.hw;
-	data->hws[2] = &cbf_mux.clkr.hw;
-	data->num = 3;
+	data->num = 2;
 
 	return devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get, data);
 }
