@@ -6,6 +6,7 @@
 /dts-v1/;
 
 #include "msm8996-xiaomi-common.dtsi"
+#include "pmi8996.dtsi"
 #include <dt-bindings/sound/qcom,q6afe.h>
 #include <dt-bindings/sound/qcom,q6asm.h>
 #include <dt-bindings/input/qcom,spmi-haptics.h>
@@ -15,7 +16,6 @@
 	compatible = "xiaomi,scorpio", "qcom,msm8996";
 	qcom,board-id = <34 0>;
 	qcom,msm-id = <0x131 0x10000>;
-	qcom,pmic-id = <0x20009 0x10013 0x00 0x00>;
 
 	aliases {
 		display0 = &framebuffer0;
