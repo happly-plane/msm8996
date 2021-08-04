@@ -9,6 +9,10 @@
 
 #include "msm8996-sony-xperia-tone.dtsi"
 
+&adsp_pil {
+	firmware-name = "qcom/msm8996/kagura/adsp.mbn";
+};
+
 / {
 	model = "Sony Xperia XZ";
 	compatible = "sony,kagura-row", "qcom,msm8996";
@@ -16,4 +20,14 @@
 
 &panel {
 	compatible = "sony,synaptics-jdi-kagura";
+};
+
+&gpu {
+	zap-shader {
+		firmware-name = "qcom/msm8996/kagura/a530_zap.mbn";
+	};
+};
+
+&venus {
+	firmware-name = "qcom/msm8996/kagura/venus.mbn";
 };

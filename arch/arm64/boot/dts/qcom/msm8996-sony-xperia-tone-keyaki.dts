@@ -14,6 +14,10 @@
 	compatible = "sony,keyaki-row", "qcom,msm8996";
 };
 
+&adsp_pil {
+	firmware-name = "qcom/msm8996/keyaki/adsp.mbn";
+};
+
 &pm8994_l19 {
 	regulator-min-microvolt = <2700000>;
 	regulator-max-microvolt = <2700000>;
@@ -27,4 +31,14 @@
 
 &panel {
 	compatible = "sony,synaptics-jdi-keyaki";
+};
+
+&gpu {
+	zap-shader {
+		firmware-name = "qcom/msm8996/keyaki/a530_zap.mbn";
+	};
+};
+
+&venus {
+	firmware-name = "qcom/msm8996/keyaki/venus.mbn";
 };
