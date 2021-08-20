@@ -311,6 +311,10 @@
 	qcom,power-source = <1>;
 };
 
+&pmi8994_fg {
+	status = "okay";
+};
+
 &pmi8994_lpg {
 	status = "okay";
 
