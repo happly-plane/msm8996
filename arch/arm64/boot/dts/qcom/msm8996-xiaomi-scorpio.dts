@@ -29,6 +29,8 @@
 			stride = <(1080 * 3)>;
 			format = "r8g8b8";
 
+			display = <&panel>;
+
 			/* DSI0 clocks */
 			clocks = <&mmcc MDSS_MDP_CLK>,
 				 <&mmcc MMSS_MMAGIC_AHB_CLK>,
@@ -72,6 +74,31 @@
 	};
 };
 
+&dsi0 {
+	vdda-supply = <&vreg_l19a_3p3>;
+
+	panel: panel@0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		ranges;
+
+		compatible = "lgphilips,sw43101";
+		reg = <0>;
+
+		reset-gpios = <&tlmm 8 GPIO_ACTIVE_LOW>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&dsi0_out>;
+			};
+		};
+	};
+};
+
+&dsi0_out {
+	remote-endpoint = <&panel_in>;
+};
+
 &gpu {
 	zap-shader {
 		firmware-name = "qcom/msm8996/scorpio/a530_zap.mbn";
@@ -90,15 +117,7 @@
 	 * and losing simplefb as a result. MMAGIC_MDSS_GDSC is flagged
 	 * always-on so it does not need any consumers to stay on.
 	 */
-	 /delete-property/ power-domains;
-};
-
-&mdss {
-	/*
-	 * Probing MDSS alters the bootloader configured framebuffer used by
-	 * simplefb. Disable it for now.
-	 */
-	status = "disabled";
+	/delete-property/ power-domains;
 };
 
 &mss_pil {
