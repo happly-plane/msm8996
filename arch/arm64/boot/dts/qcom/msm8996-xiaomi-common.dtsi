@@ -268,6 +268,10 @@
 	vdd-gfx-supply = <&vdd_gfx>;
 };
 
+&mss_pil {
+	status = "okay";
+};
+
 &pcie0 {
 	status = "okay";
 
@@ -290,6 +294,10 @@
 	status = "okay";
 
 	linux,code = <KEY_VOLUMEDOWN>;
+};
+
+&slpi_pil {
+	status = "okay";
 };
 
 &usb3 {
