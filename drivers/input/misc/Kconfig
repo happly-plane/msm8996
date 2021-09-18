@@ -139,6 +139,18 @@ config INPUT_E3X0_BUTTON
 	  To compile this driver as a module, choose M here: the
 	  module will be called e3x0_button.
 
+config INPUT_FPC1020
+	tristate "Fingerprint Cards FPC1020 Fingerprint Sensor Driver"
+	depends on OF
+	depends on SPI
+	select REGMAP_SPI
+	help
+	  Say Y here to enable support for Fingerprint Cards FPC1020
+	  fingerprint sensor.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called fpc1020.
+
 config INPUT_PCSPKR
 	tristate "PC Speaker support"
 	depends on PCSPKR_PLATFORM
