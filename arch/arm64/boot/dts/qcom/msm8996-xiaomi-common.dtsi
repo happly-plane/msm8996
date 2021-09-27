@@ -291,6 +291,10 @@
 	linux,code = <KEY_VOLUMEDOWN>;
 };
 
+&pmi8994_fg {
+	status = "okay";
+};
+
 &usb3 {
 	status = "okay";
 	extcon = <&typec>;
