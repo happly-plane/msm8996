@@ -2029,6 +2029,10 @@
 			clocks = <&rpmcc RPM_SMD_IPA_CLK>;
 			clock-names = "core";
 
+			interconnects = <&a2noc MASTER_IPA &bimc SLAVE_EBI_CH0>,
+					<&a2noc MASTER_IPA &snoc SLAVE_IMEM>;
+			interconnect-names = "memory", "imem";
+
 			dmas = <&ipa_bam 2>, <&ipa_bam 3>, <&ipa_bam 4>, <&ipa_bam 5>,
 			       <&ipa_bam 6>, <&ipa_bam 7>, <&ipa_bam 8>, <&ipa_bam 9>;
 			dma-names = "ap_lan_rx", "cmd_tx", "ap_modem_tx", "ap_modem_rx",
