@@ -182,4 +182,16 @@ config UIO_DFL
 	    opae-sdk/tools/libopaeuio/
 
 	  If you compile this as a module, it will be called uio_dfl.
+
+config UIO_FPC1020
+	tristate "Userspace I/O driver for FPC1020 fingerprint sensors"
+	depends on OF
+	help
+	  Userspace I/O driver for Fingerprint Cards FPC1020 series fingerprint
+	  sensors. This driver only handles power and reset. The rest of the work
+	  is done in libfprint:
+
+	  https://gitlab.freedesktop.org/libfprint/libfprint
+
+	  If you compile this as a module, it will be called uio_fpc1020.
 endif
