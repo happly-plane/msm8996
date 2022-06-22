@@ -253,7 +253,7 @@
 	};
 };
 
-&pmi8994_fg {
+&pmi8996_fg {
 	monitored-battery = <&battery>;
 };
 
