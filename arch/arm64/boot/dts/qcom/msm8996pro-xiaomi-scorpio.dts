@@ -241,7 +241,7 @@
 			"qcom/msm8996/scorpio/modem.mbn";
 };
 
-&pmi8994_fg {
+&pmi8996_fg {
 	monitored-battery = <&battery>;
 };
 
