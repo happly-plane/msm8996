@@ -26,33 +26,32 @@ env:
   TZ: Asia/Shanghai
   
 jobs:
-  build:
-  runs-on: ubuntu-laster
-  
-  steps:
-    - name: Checkout
-      user: actions/checkout@main
+   build:
+   runs-on: ubuntu-laster
+   steps:
+      - name: Checkout
+        user: actions/checkout@main
       
       
-    - name: Initialization environment
-      env:
+      - name: Initialization environment
+        env:
         DEBIAN_FRONTEND: noninteractive
-      run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+        run: |
+         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+         sudo -E apt-get -qq update
+         sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
+         sudo -E apt-get -qq autoremove --purge
+         sudo -E apt-get -qq clean
+         sudo timedatectl set-timezone "$TZ"
+         sudo mkdir -p /workdir
+         sudo chown $USER:$GROUPS /workdir
          - name: Clone source code
-        working-directory: /workdir
-        run: |
-        df -hT $PWD
-        git clone REPO_URL -b REPO_BRANCH msm8996
-        - name: step build env
-        run: |
+         working-directory: /workdir
+          run: |
+         df -hT $PWD
+          git clone REPO_URL -b REPO_BRANCH msm8996
+          - name: step build env
+           run: |
          sudo apt-get install git fakeroot build-essential ncurses-dev xz-utils libssl-dev bc flex libelf-dev bison -y
          sudo mkdir /usr/local/toolchain
          wget http://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu.tar.xz
@@ -65,31 +64,31 @@ jobs:
          make ARCH=arm64 CROSS_COMPILE=aarch64-linuc-gnc-
          
          - name: Generate release tag
-      id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+         id: tag
+         if: env.UPLOAD_RELEASE == 'true' && !cancelled()
     
-    - name: Upload firmware to release
-      uses: softprops/action-gh-release@v1
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
+         - name: Upload firmware to release
+         uses: softprops/action-gh-release@v1
+         if: steps.tag.outputs.status == 'success' && !cancelled()
+         env:
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           with:
+           tag_name: ${{ steps.tag.outputs.release_tag }}
+           body_path: release.txt
         files: ${{ env.FIRMWARE }}/* 
-    - name: Delete workflow runs
-      uses: GitRML/delete-workflow-runs@main
-      with:
+      - name: Delete workflow runs
+        uses: GitRML/delete-workflow-runs@main
+        with:
         retain_days: 1
         keep_minimum_runs: 3
 
-    - name: Remove old Releases
-      uses: dev-drprasad/delete-older-releases@v0.1.0
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
+      - name: Remove old Releases
+        uses: dev-drprasad/delete-older-releases@v0.1.0
+        if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+        with:
         keep_latest: 3
         delete_tags: true
-      env:
+        env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
          
          
