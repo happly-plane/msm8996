@@ -31,7 +31,7 @@ jobs:
       
     steps:
        - name: Checkout
-         user: actions/checkout@main
+         uses: actions/checkout@main
       
       
        - name: Initialization environment
