@@ -62,7 +62,7 @@ jobs:
           - name: make
           run: |
           cd msm8996
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linuc-gnc-
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linuc-gnc- -j 20
          
           - name: Generate release tag
           id: tag
